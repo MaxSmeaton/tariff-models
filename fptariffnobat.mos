@@ -1,0 +1,49 @@
+model fptariffnobat
+uses "mmxprs"
+
+! Setting up the variables
+declarations
+	NHours = 24
+	Hours = 0..NHours
+	HourNames: array(Hours) of string
+	Demand: array(Hours) of real
+	SpotPrice: array(Hours) of real
+	SolarProduction: array(Hours) of real
+	FeedInTariff: real
+	RetailPrice: real
+	Buy: array(Hours) of mpvar
+	Sell: array(Hours) of mpvar
+end-declarations
+
+initializations from "fptariffnobat.dat" !importing data
+	HourNames Demand SpotPrice SolarProduction FeedInTariff RetailPrice
+end-initializations
+
+!setting up profit equations
+TotalProfit := sum(h in Hours) (FeedInTariff*Sell(h) - RetailPrice*Buy(h))
+RetailProfit := sum(h in Hours) (RetailPrice*Buy(h) - Buy(h)*SpotPrice(h))
+
+
+forall(h in Hours) do !balance and solar selling constraints
+	DemandCS(h) := Buy(h) + SolarProduction(h) - Sell(h) >= Demand(h)
+	SellCS(h) := Sell(h) <= SolarProduction(h)
+end-do
+
+maximize(TotalProfit) !maximising the total profit
+
+!uncomment lines when specific values are needed
+
+!forall (h in Hours) do
+	!write(HourNames(h), ": ")
+	!write("Buy:", strfmt(getsol(Buy(h)), 3), "kWh", "   ")
+	!write("Sell:", strfmt(getsol(Sell(h)), 3), "kWh", "   ")
+	!write("Stored: ",strfmt(getsol(StoredElectricity(h)), 3), "kWh")
+	!write("Charging: ", strfmt(getsol(Batc(h)), 3), "kWh")
+	!write("Discharging: ", strfmt(getsol(Batd(h)), 3), "kWh")
+	!writeln
+!end-do
+
+writeln("Total Profit =", getsol(TotalProfit), "p") !print solutions
+writeln("Retailer Profit =", getsol(RetailProfit), "p")
+
+end-model

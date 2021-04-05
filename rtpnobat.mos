@@ -1,0 +1,50 @@
+model rtpnobat
+uses "mmxprs"
+
+!setting up variables
+declarations
+	NHours = 24
+	Hours = 0..NHours
+	HourNames: array(Hours) of string
+	Demand: array(Hours) of real
+	SpotPrice: array(Hours) of real
+	SolarProduction: array(Hours) of real
+	OptimalFP: real
+	FeedInTariff: real
+	RetailPrice: real
+	Buy: array(Hours) of mpvar
+	Sell: array(Hours) of mpvar
+end-declarations
+
+initializations from "rtpnobat.dat" !importing from data file
+	HourNames Demand SpotPrice SolarProduction OptimalFP FeedInTariff RetailPrice
+end-initializations
+
+StartProfit := sum(h in Hours) (FeedInTariff*Sell(h) - SpotPrice(h)*Buy(h)) !Setting up profit equation
+
+forall(h in Hours) do !demand and solar constrainta
+	DemandCS(h) := Buy(h) + SolarProduction(h) - Sell(h) = Demand(h)
+	SellCS(h) := Sell(h) <= SolarProduction(h)
+end-do
+
+maximize(StartProfit) !maximising profits
+RhoRTP := -OptimalFP + StartProfit !calculating maximum rho based on optimal FP
+TotalProfit := StartProfit - RhoRTP !calculating final profit
+
+!uncomment lines if specific values over time are required
+
+!forall (h in Hours) do
+	!write(HourNames(h), ": ")
+	!write("Buy:", strfmt(getsol(Buy(h)), 3), "kWh", "   ")
+	!write("Sell:", strfmt(getsol(Sell(h)), 3), "kWh", "   ")
+	!write("Stored: ",strfmt(getsol(StoredElectricity(h)), 3), "kWh")
+	!write("Charging: ", strfmt(getsol(Batc(h)), 3), "kWh")
+	!write("Discharging: ", strfmt(getsol(Batd(h)), 3), "kWh")
+	!writeln
+!end-do
+
+writeln("Start Profit =", getsol(StartProfit), "p") !print solutions
+writeln("Rho RTP =", getsol(RhoRTP), "p")
+writeln("Which gives overall profit of ", getsol(TotalProfit), "p")
+
+end-model
